@@ -1,0 +1,15 @@
+{
+  "name": "socket-chat-example",
+  "version": "0.0.1",
+  "description": "University assignment chat app using socket.io",
+  "dependencies": {
+    "angular": "^1.5.3",
+    "angularjs": "0.0.1",
+    "express": "^4.10.2",
+    "jquery": "^2.2.2",
+    "socket.io": "^1.4.5",
+    "socket.io-client": "^1.4.5",
+    "socket.io-p2p": "^2.2.0",
+    "socket.io-p2p-server": "^1.2.0"
+  }
+}

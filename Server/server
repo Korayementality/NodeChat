@@ -1,0 +1,63 @@
+var app = require('express')();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+var clients = [];
+var onlineUsers = [];
+var chatRooms = [];
+io.on('connection', function(socket){
+  console.log('a user connected with ID '+socket.id);
+  clients.push(socket);
+  
+  socket.on('disconnect', function(){
+    clients.splice(clients.indexOf(socket.id), 1);
+    for (var i = 0; i < onlineUsers.length; i++) 
+    {
+      if(onlineUsers[i]['id'] == socket.id.substr(2)) 
+      {
+        console.log("removing online user "+ onlineUsers[i]['id']);
+        onlineUsers.splice(i,1);
+      }
+    }
+    console.log('socket disconnected with ID '+socket.id.substr(2));
+  });
+  
+  socket.on('name chosen', function(msg) {
+      onlineUsers.push({'id':socket.id.substr(2), 'name':msg});
+      console.log("A user logged in as "+ msg+ " (ID: "+socket.id.substr(2)+")");
+      io.emit('confirm name', msg);
+  });
+  
+  socket.on('chat message', function(msg){
+    console.log('message: ' + msg);
+    io.emit('chat message', msg);
+  });
+  
+  
+  socket.on('persisting', function(msg) {
+   // console.log("User "+msg.userName+" is online with ID: "+msg.userID);
+  });
+  
+  socket.on('initiate chat', function(msg) {
+      console.log(msg.sender+" wants to start a new chat with "+msg.ender);
+      io.sockets.in($(this).val()).emit('new message', msg);
+  });
+  
+});
+setInterval(function(){
+    io.emit('update user list', onlineUsers);
+    console.log("refreshing user list");
+   for(var i in onlineUsers)
+    {
+      console.log(onlineUsers[i].name);
+    }
+    
+  }, 3000);
+
+
+app.get('/', function(req, res){
+  res.sendFile(__dirname + '/index.html');
+});
+
+http.listen(process.env.PORT, function(){
+  console.log('listening on *:'+process.env.PORT.toString()+' on ' + process.env.IP.toString());
+});

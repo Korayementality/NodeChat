@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Node Chat</title>
+    <style>
+    </style>
+  </head>
+  <body>
+
+<div class="modal fade" id="LoginModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">Choose a nickname</h4>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="nameChoice"/>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal" id ="modalConfirm">Enter</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="col-md-9">
+    <p id="nickname">Logged in as ..</p>
+  <div>
+
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" role="tablist" id="navTabs">
+      <li role="presentation" class="active"><a href="#welcomeTab" aria-controls="home" role="tab" data-toggle="tab">Welcome Room</a></li>
+      <li role="presentation"><a href="#studentsTab" aria-controls="home" role="tab" data-toggle="tab">Students Room</a></li>
+      <li role="presentation"><a href="#teachersTab" aria-controls="home" role="tab" data-toggle="tab">Teachers Room</a></li>
+    </ul>
+  
+    <!-- Tab panes -->
+    <div class="tab-content" id="chatTabs">
+      <div role="tabpanel" class="tab-pane active" id="welcomeTab">
+        <ul id="messages"></ul>
+      </div>
+      <div role="tabpanel" class="tab-pane active" id="studentsTab">
+        <ul id="messages"></ul>
+      </div>
+      <div role="tabpanel" class="tab-pane active" id="teachersTab">
+        <ul id="messages"></ul>
+      </div>
+    </div>
+  </div>
+  <form id='chatForm'>
+    <input id="textmessage" autocomplete="off" /><button>Send</button>
+  </form>
+    
+</div>
+<div class="col-md-3">
+  <ul id="userlist">
+    People Online
+  </ul>
+</div>
+  </body>
+  
+  <script src="socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.3/angular.min.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.2.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+<script>
+
+  var name;
+  var end_ID = 'welcomeTab';
+  //var ID = socket.io.engine.id;
+  $('#LoginModal').modal('toggle');
+  var socket = io.connect();
+  $('#modalConfirm').click(function() {
+      socket.emit('name chosen', {'id':socket.io.engine.id, 'name':$('#nameChoice').val()});
+  });
+ 
+  $('#chatForm').submit(function(){
+    console.log(end_ID, $('#textmessage').val());
+    if(end_ID == 'welcomeTab' || end_ID == 'studentsTab' || end_ID == 'teachersTab')
+    {
+      socket.emit('group message', {'id': socket.io.engine.id, 'name': name, 'endID': end_ID, 'message':$('#textmessage').val()});
+      $('#textmessage').val('');
+    }
+    else
+    {
+      socket.emit('chat message', {'id': socket.io.engine.id, 'name': name, 'endID': end_ID, 'message':$('#textmessage').val()});
+      $('#'+end_ID).append($('<p>'));
+      $('#'+end_ID).append(name+': ');
+      $('#'+end_ID).append($('#textmessage').val());
+      $('#textmessage').val('');
+    }
+    return false;
+  });
+  $(document).ready(function(){
+      socket.on('deliver message', function(msg){
+        console.log(msg);
+        // var elemID = msg.id;
+        var elemID = msg.id;
+        $('#'+elemID).append($('<p>'));
+        $('#'+elemID).append(msg.name+': ');
+        $('#'+elemID).append(msg.message);
+        console.log(elemID);
+      });
+      socket.on('deliver group message', function(msg) {
+          var elemID = msg.endID;
+        $('#'+elemID).append($('<p>'));
+        $('#'+elemID).append(msg.name+': ');
+        $('#'+elemID).append(msg.message);
+      });
+  });
+  
+  socket.on('confirm name', function(msg) {
+      $("#nickname").text("Logged in as " + msg.name);
+      name = msg.name;
+  });
+ 
+
+  socket.on('update user list', function(msg) {
+      $("#userlist").text('');
+      for(var i in msg)
+      {
+        if(msg[i].name != name)
+        {  
+          $("#userlist").append($('<p>'));
+          var html = '<button type="button" value="'+msg[i].id+'" id="'+msg[i].name+'" class="btn btn-info chatStart"><span class="glyphicon glyphicon-comment">'+msg[i].name+'</span></button>';
+          $("#userlist").append($(html));
+        }
+      }
+  });
+  
+  socket.on('create chat', function(msg) {
+    
+    var html1 = '<li role="presentation"><a href="#'+msg.id+'" aria-controls="home" role="tab" data-toggle="tab">'+msg.name+'</a></li>';
+    var html2 = '<div role="tabpanel" class="tab-pane" id="'+msg.id+'"><ul id="'+msg.id+'-messages"></ul></div>';
+    $('#navTabs').append($(html1));  
+    $('#chatTabs').append($(html2));
+  });
+  $(document).on('click', '.chatStart, #navTabs > li > a', function(){
+    
+    if($(this).hasClass('chatStart'))
+    {
+      socket.emit('start chat', {'id':socket.io.engine.id, 'name': name, 'endID':$(this).val()});
+      var html1 = '<li role="presentation"><a href="#'+$(this).val()+'" aria-controls="home" role="tab" data-toggle="tab">'+$(this).text()+'</a></li>';
+      var html2 = '<div role="tabpanel" class="tab-pane" id="'+$(this).val()+'"><ul id="'+$(this).val()+'-messages"></ul></div>';
+      $('#navTabs').append($(html1));  
+      $('#chatTabs').append($(html2));
+    }
+    else if($(this).attr('href') != '')
+    {
+      //alert($(this).attr('href').substr($(this).attr('href').indexOf('#')+1));
+      end_ID = $(this).attr('href').substr($(this).attr('href').indexOf('#')+1);
+    }
+  });
+</script>
+</html>
